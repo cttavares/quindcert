@@ -23,6 +23,8 @@ class StatesAndProbabilities:
     def set_probability_states(self, probs: Dict [str, float]):
         self.states_and_probabilities = probs.copy ()
 
+    def get_probabilities (self):
+        return self.states_and_probabilities
 
     def get_probability_states(self) -> Iterable[Any]:
         """
@@ -57,7 +59,7 @@ class StatesAndProbabilities:
         """
         return len(self.states_and_probabilities) > 0
     
-    def aggregate(self, results_to_aggregate: Dict[str, float], operation: str = "+") -> None:
+    def aggregate(self, results_to_aggregate: Dict[str, float], operation: str = "*") -> None:
         """
         Aggregate probabilities with another set of results.
         
@@ -65,6 +67,10 @@ class StatesAndProbabilities:
         results_to_aggregate (Dict[str, float]): The results to aggregate.
         operation (str): The operation to perform ('+' or '*').
         """
+        if not self.has_probabilities ():
+            self.set_probability_states (results_to_aggregate)
+            return 
+        
         combined_probs = {}
         
         for state_first, prob_first in self.states_and_probabilities.items ():

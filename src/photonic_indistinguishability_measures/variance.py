@@ -1,5 +1,7 @@
 import logging
+import numpy as np
 from typing import List, Dict, Optional
+import itertools, functools
 
 from base.abstract_circuit import AbstractCircuit
 from base.results import StatesAndProbabilities
@@ -50,6 +52,10 @@ class Variance:
         return 2 - 2/n
     
     @staticmethod
+    def calculate_biggest_evalue_bound(variance_indistinguishable: float, variance_distinguishable: float, n: int) -> float:
+        return (variance_indistinguishable - 2 * variance_distinguishable + 1) / (n* (1 - variance_distinguishable))
+    
+    @staticmethod
     def calculate_min_expected_variance(n: int) -> float:
         """
         Calculates the minimum expected variance for n modes.
@@ -61,7 +67,7 @@ class Variance:
         float: The minimum expected variance.
         """
         return 1 - 1/n
-
+    
     @staticmethod
     def calculate_expected_value_of_the_expected_variance(gram_matrix: List[List[float]], n: int) -> float:
         """
@@ -71,6 +77,7 @@ class Variance:
         gram_matrix (List[List[float]]): The Gram matrix representing overlaps between the modes.
         n (int): The number of modes.
 
+        
         Returns:
         float: The expected value of the expected variance.
         """
@@ -79,11 +86,85 @@ class Variance:
             for  b in range (n):
                 if a != b:
                     sum_overlaps_ab += gram_matrix [a][b]
-        return 1 + (1/(n*(n + 1)))*sum_overlaps_ab - (2/(n+1))  
+        return 1 + (1/(n*(n + 1)))*sum_overlaps_ab - (2/(n+1))
+
+    @staticmethod
+    def calculate_expected_variance_from_gram_matrix_and_interferometer (gram_matrix: List[List[float]], interferometer: List[List[complex]], n: int) -> float:
+        n = len (gram_matrix)
+        sum = 0
+        for j in itertools.product (range (0, n), repeat=2):
+            (a, b) = j
+            if a != b:
+               sum += gram_matrix [a][b] * functools.reduce (lambda x, y: x + y, [abs (interferometer [i][a])**2 * abs (interferometer [i][b])**2 for i in range (0, n)])
+
+        sum_4 = 0
+        for i in range (0, n):
+            for j in range (0, n):
+                sum_4 += abs(interferometer [i][j])**4
+
+        return 1 + (1/n) * sum - (1/n) * sum_4
     
     @staticmethod
-    def calculate_variance_value_of_the_expected_variance (gram_matrix):
-        pass
+    def calculate_variance_value_of_the_expected_variance (gram_matrix: List[List[float]], n: int) -> float:
+        # Define the coefficients for different cases
+        coefficients = {
+            "[a!=b; a'!=b'; a!=a'; a!=b'; b!=a'; b!=b']": lambda n: (n**4 - n**3 + n**2 + n + 14) / ((n - 1) * n * (n**2 - 4) * (n**2 - 2 * n - 3)),
+            "[a!=b; a'!=b'; a!=a'; a!=b'; b!=a'; b=b']": lambda n: (n**5 + 3 * n**4 - 5 * n**2 + 43 * n - 10) / ((n - 3) * (n - 1) * n**2 * (n + 1) * (n**2 - 4)),
+            "[a!=b; a'!=b'; a!=a'; a!=b'; b=a'; b!=b']": lambda n: (n**4 + n**3 + 2 * n**2 + 3 * n + 25) / ((n - 1) * n * (n**2 - 4) * (n**2 - 2 * n - 3)),
+            "[a!=b; a'!=b'; a!=a'; a=b'; b!=a'; b!=b']": lambda n: (n**6 + 5 * n**5 + 3 * n**4 + n**3 + 50 * n**2 + 81 * n - 12) / ((n - 1) * n**2 * (n + 2) * (n + 3) * (n**2 - 2 * n - 3)),
+            "[a!=b; a'!=b'; a!=a'; a=b'; b=a'; b!=b']": lambda n: (n**4 + 2 * n**3 + 2 * n**2 - n + 30) / (n**2 * (n**2 - 4) * (n**2 - 2 * n - 3)),
+            "[a!=b; a'!=b'; a=a'; a!=b'; b!=a'; b!=b']": lambda n: (n**4 + n**3 + 2 * n**2 + 3 * n + 25) / ((n - 1) * n * (n**2 - 4) * (n**2 - 2 * n - 3)),
+            "[a!=b; a'!=b'; a=a'; a=b'; b!=a'; b=b']": lambda n: (n**4 + 4 * n**3 + 10 * n**2 - 4 * n + 53) / ((n - 1) * n * (n**2 - 4) * (n**2 - 2 * n - 3)),
+            "[a!=b; a'!=b'; a=a'; a!=b'; b=a'; b!=b']": lambda n: (n**4 + 2 * n**3 + 2 * n**2 - n + 30) / (n**2 * (n**2 - 4) * (n**2 - 2 * n - 3)),
+            "[a!=b; a'!=b'; a=a'; a=b'; b=a'; b!=b']": lambda n: (n**5 + 3 * n**4 - 5 * n**2 + 43 * n - 10) / ((n - 3) * (n - 1) * n**2 * (n + 1) * (n**2 - 4)),
+        }
+
+        # Calculate the second part of the expression with the nested loops and string keys
+        result = 0
+        for a in range(n):
+            for b in range(n):
+                if a != b:
+                    for a_prime in range(n):
+                        for b_prime in range(n):
+                            if a_prime != b_prime:
+                                key = f"[a{'!=' if a != b else '='}b; a'{'!=' if a_prime != b_prime else '='}b'; a{'!=' if a != a_prime else '='}a'; a{'!=' if a != b_prime else '='}b'; b{'!=' if b != a_prime else '='}a'; b{'!=' if b != b_prime else '='}b']"
+                                if key in coefficients:
+                                    result += coefficients[key](n) * gram_matrix[a][b] * gram_matrix[a_prime][b_prime]
+
+        print ("First big cicle!")
+
+        result = result * (1/n**2)
+        # Calculate the first part of the expression
+        sum_1 = np.sum ([gram_matrix[a][b] for a in range(n) for b in range(n) if a != b])
+        part_1 = 2 * (1 + (1 / (n + 1)) * sum_1 - (2 / (n + 1))) - 1
+        result += part_1
+
+
+        # Initialize the sums
+        sum_ab_apbp = 0
+        
+        # Loop over all indices to compute the sums
+        for a in range(n):
+            for b in range(n):
+                if a != b:
+                    for a_prime in range(n):
+                        for b_prime in range(n):
+                            if a_prime != b_prime:
+                                sum_ab_apbp += gram_matrix [a][b] * gram_matrix [a_prime][b_prime]
+
+        print ("Second big cicle!")
+        
+
+        result -= (2 / n**2) * sum_1 * ((2 * (n**5 - n**4 + 9 * n**3 + 5 * n**2 + 22 * n + 44)) / ((n - 3) * (n - 2) * n * (n + 2) * (n**2 - 1)))
+
+        # Calculate the additional parts
+        result += (1 / n**2) * (4 * (n**5 - n**4 + 10 * n**3 + 12 * n**2 + 13 * n + 61)) / ((n - 3) * (n - 2) * (n - 1) * (n + 1) * (n + 2))
+        
+        # Calculate the term
+        result += - (1 / (n + 1)**2) * (sum_ab_apbp + 2 * (n - 1) * sum_1 + (n - 1)**2)
+
+        print ("End!")
+        return result
 
     def __init__(self, device: Device, number_of_modes: int = 2):
         """
@@ -201,7 +282,7 @@ class Variance:
         for i in range (number_of_modes):
             l = [1 if j == i else 0 for j in range (number_of_modes)]
             results_distinguishable = self.device.execute_experiment (generate_state_from_list (l), generate_fourier_transform_circuit (self.number_of_modes))
-            results_agrregated.aggregate (results_distinguishable)
+            results_agrregated.aggregate (results_distinguishable.get_probabilities ())
 
         return self.calculate_expected_variance (results_agrregated, number_of_modes)
 
@@ -215,6 +296,6 @@ class Variance:
         Returns:
         float: The calculated expected variance for an indistinguishable scenario.
         """
-        results =  self.device.execute_experiment (generate_state_from_list ([1 for i in range (number_of_modes)]), generate_fourier_transform_circuit (number_of_modes), number_of_modes)
+        results =  self.device.execute_experiment (generate_state_from_list ([1 for i in range (number_of_modes)]), generate_fourier_transform_circuit (number_of_modes))
         return self.calculate_expected_variance (results, number_of_modes)
     

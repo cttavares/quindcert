@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Any, Dict
 
 import perceval as pcvl
@@ -8,6 +9,18 @@ from base.devices import Device, DeviceFactory, DeviceMode
 from base.results import StatesAndProbabilities
 from quandela.enchancedanalyzer import EnhancedAnalyzer
 from quandela.circuit_helpers import approximate_with_MZ
+
+class QuandelaLocalDevices (Enum):
+    NAIVE = "Naive"
+    SLOS = "SLOS"
+    STEP = "Stepper"
+    MPS = "MPS"
+    CLIFFORD = "CliffordClifford2017"
+
+class QuandelaRemoteDevices (Enum):
+    QPU_ASCELLA = "qpu:ascella"
+    SIM_ASCELLA = "sim:ascella"
+    SIM_CLIFFORD = "sim:clifford"
 
 class QuandelaDeviceFactory (DeviceFactory):
     """
@@ -44,7 +57,7 @@ class QuandelaDeviceFactory (DeviceFactory):
         assert ((name == "qpu:ascella") or (name == "sim:ascella") or (name == "sim:clifford")), "Remote processor unknown."
         return pcvl.RemoteProcessor(name, token)
 
-    def create_remote_device (self, name: str, mode: str, token: str) -> Device:
+    def create_remote_device (self, name: str, mode: DeviceMode, token: str) -> Device:
         """
         Create a remote device with the given name, mode, and token.
 
@@ -58,7 +71,7 @@ class QuandelaDeviceFactory (DeviceFactory):
         """
         return QuandelaDevice (self.create_remote_processor (name, token), str (mode))
 
-    def create_local_device (self, name: str, mode: str) -> Device:
+    def create_local_device (self, name: str, mode: DeviceMode) -> Device:
         """
         Create a local device with the given name and mode.
 

@@ -3,8 +3,9 @@ from unittest.mock import MagicMock, patch
 from base.results import StatesAndProbabilities
 from base.circuit_helpers import generate_fourier_transform_circuit
 from base.state_generation_helpers import generate_state_from_list
-from base.devices import Device
+from base.devices import Device, DeviceMode
 from photonic_indistinguishability_measures.bunching import BunchingCalculator
+from quandela.quandela_devices import QuandelaDeviceFactory, QuandelaLocalDevices
 
 class TestBunchingCalculator(unittest.TestCase):
 
@@ -12,6 +13,7 @@ class TestBunchingCalculator(unittest.TestCase):
         self.device = MagicMock(spec=Device)
         self.calculator = BunchingCalculator(device=self.device, number_of_modes=2)
 
+      
     def test_calculate_bunching_probability(self):
         probability_results = {
             '|2,0>': 0.5,
@@ -58,6 +60,36 @@ class TestBunchingCalculator(unittest.TestCase):
         self.assertEqual(mock_make_bunching_experiment.call_count, 3)
         mock_calculate_bunching_probability.assert_called_once()
         self.assertEqual(result, 0.9)
+    
+    def test_calculate_full_bunching_distinguishable_case (self):
+        probability_results = {
+            '|1,0,0>': 1/3,
+            '|0,1,0>': 1/3,
+            '|0,0,1>': 1/3
+        }
+        
+        states_and_probabilities = StatesAndProbabilities ()
+        states_and_probabilities.set_probability_states (probability_results)
+
+        states_and_probabilities.aggregate (probability_results)
+        states_and_probabilities.aggregate (probability_results)
+
+        result = self.calculator.calculate_full_bunching_probability (states_and_probabilities, 3)
+        self.assertEqual(result, 1/9)
+    
+    def test_fb_indistinguishable_vs_distinguishable (self):
+        number_of_modes = 3
+
+        print (str (QuandelaLocalDevices.NAIVE.value))
+        device = QuandelaDeviceFactory().create_local_device (str (QuandelaLocalDevices.NAIVE.value), DeviceMode.SAMPLER)
+
+        bc = BunchingCalculator (device, number_of_modes)
+
+        P_fb_i = bc.do_the_experiments_for_full_bunching_indistinguishable_case ()
+        
+        P_fb_d = bc.do_the_experiments_for_full_bunching_distinguishable_case ()
+        self.assertLessEqual (abs (P_fb_i/P_fb_d-6), 0.2)
+
 
 if __name__ == '__main__':
     unittest.main()

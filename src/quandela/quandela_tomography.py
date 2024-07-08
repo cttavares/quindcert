@@ -3,6 +3,7 @@ from base.abstract_circuit import AbstractCircuit
 from base.devices import Device
 from base.state_generation_helpers import generate_states_on_indexes
 from quandela.circuit_helpers import generate_identity
+from base.results import StatesAndProbabilities
 from tomography.tomography_probers import DeviceProcessTomographyProber
 
 from numpy import sort
@@ -20,10 +21,10 @@ class QuandelaProcessTomographyProber (DeviceProcessTomographyProber):
         number_of_modes (int): The number of modes.
         device (Any): The device to use for experiments.
         """
+        super ().__init__ (device)
         self.number_of_modes = number_of_modes
-        self.device = device
-        self.single_photon_results = self.generate_trivial_results (1, self.number_of_modes)
-        self.double_photon_results = self.generate_trivial_results (2, self.number_of_modes)
+        self.single_photon_experiments_results = self.generate_trivial_results (1, self.number_of_modes)
+        self.double_photon_experiments_results = self.generate_trivial_results (2, self.number_of_modes)
         self.some_circuit = generate_identity (self.number_of_modes)
 
     def define_circuit(self, circuit: AbstractCircuit) -> None:
@@ -124,6 +125,14 @@ class QuandelaProcessTomographyProber (DeviceProcessTomographyProber):
         logging.debug ("[Process Tomography prober] Single photon states {}".format (states))
         return states
 
+    def convert_states (self, states: StatesAndProbabilities):
+        results = dict ()
+        
+        for state in states.get_probability_states():
+            results [state] = states.get_probability (state)
+        return results
+
+    
     def perform_experiments_from_states(self, states: Dict[str, Any]) -> Dict[str, Any]:
         """
         Perform experiments based on the provided states.
@@ -138,8 +147,8 @@ class QuandelaProcessTomographyProber (DeviceProcessTomographyProber):
         for state_index in states.keys ():
             logging.debug ("[Process Tomography prober] Doing experiment for {}".format (state_index))
             results = self.device.execute_experiment (states [state_index], self.some_circuit)
-            logging.debug ("[Process Tomography prober] Results {}".format (results))
-            experiments_results [state_index] = results
+            logging.debug ("[Process Tomography prober] Results {}".format (self.convert_states (results)))
+            experiments_results [state_index] = self.convert_states (results)
         return experiments_results
 
     def string_to_indexes(self, state_def: str) -> str:
@@ -219,5 +228,5 @@ class QuandelaProcessTomographyProber (DeviceProcessTomographyProber):
         """
         Perform the full set of experiments and fill the results.
         """
-        self.fill_results (self.perform_single_photon_experiments (), self.single_photon_results)
-        self.fill_results (self.perform_double_photon_experiments (), self.double_photon_results)
+        self.fill_results (self.perform_single_photon_experiments (), self.single_photon_experiments_results)
+        self.fill_results (self.perform_double_photon_experiments (), self.double_photon_experiments_results)

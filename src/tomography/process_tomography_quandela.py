@@ -90,9 +90,9 @@ class DeviceCharacterizer:
         Tuple[np.ndarray, Any, float]: A tuple containing the original unitary, the reconstructed state, and the distance.
         """
         if self.original is None:
-            original = self.generate_some_circuit (self.number_of_modes)
+            self.original = self.generate_some_circuit (self.number_of_modes)
 
-        self.tomography_device.define_circuit (original)
+        self.tomography_device.define_circuit (self.original)
         self.tomography_device.make_experimental_bunch ()
         
         logging.debug ("[Process Tomography prober] Total single photon results {}".format (self.tomography_device.get_single_photon_experiments ()))
@@ -101,10 +101,10 @@ class DeviceCharacterizer:
         rebuilt = self.reconstruct_state ()
         logging.debug (rebuilt)
 
-        distance = self.calculate_distance_between_matrices (rebuilt, original.compute_unitary())
+        distance = self.calculate_distance_between_matrices (rebuilt, self.original.m)
         logging.debug ("And the distance is ba-dum-pssh:" + str (distance))
     
-        return (original.compute_unitary (), rebuilt, distance)    
+        return (self.original.m, rebuilt, distance)    
 
 
 

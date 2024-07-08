@@ -34,13 +34,13 @@ class BunchingCalculator:
         StatesAndProbabilities: The results of the experiment.
         """
         if state == None:
-            state = generate_state_from_list ([1 for i in range (self.number_of_modes)])
+            state = generate_state_from_list ([1 for _ in range (self.number_of_modes)])
 
         if circuit == None:
             circuit = generate_fourier_transform_circuit (self.number_of_modes)
             
         self.results = self.device.execute_experiment (state, circuit)
-
+        return self.results    
 
     def calculate_bunching_probability(self, probability_results: StatesAndProbabilities, min_number_of_photons: int) -> float:
         """
@@ -59,13 +59,13 @@ class BunchingCalculator:
     
             for occ in converted_state[1:len(converted_state)-1].split (","):
                 if int(occ) >= min_number_of_photons: 
-                    print ('Bunch event, considering to the calculation')
+                    #print ('Bunch event, considering to the calculation')
                     probability += probability_results.get_probability (state) 
                     break
         
         return probability
 
-    def calculate_full_bunching_probability(self, probability_results: StatesAndProbabilities) -> float:
+    def calculate_full_bunching_probability(self, probability_results: StatesAndProbabilities, number_of_modes: Optional [int] = None) -> float:
         """
         Calculate the full bunching probability from the experiment results.
         
@@ -75,7 +75,10 @@ class BunchingCalculator:
         Returns:
         float: The calculated full bunching probability.
         """
-        return self.calculate_bunching_probability (probability_results, self.number_of_modes)
+        if number_of_modes is None:
+            return self.calculate_bunching_probability (probability_results, self.number_of_modes)
+        else:
+            return self.calculate_bunching_probability (probability_results, number_of_modes)
     
     def do_the_experiments_for_full_bunching_indistinguishable_case(self) -> float:
         """
@@ -96,17 +99,19 @@ class BunchingCalculator:
         """
         results_distinguishable_total = StatesAndProbabilities ()
 
+        #print ("Entering distinguishable case")
         for i in range (self.number_of_modes):
             l = [1 if j == i else 0 for j in range (self.number_of_modes)]
             results_distinguishable = self.make_bunching_experiment (generate_state_from_list (l), generate_fourier_transform_circuit (self.number_of_modes))
-            print ("Input state: ", l, ", Results: ", results_distinguishable)
+            #print ("Input state: ", l, ", Results: ", results_distinguishable.get_probabilities ())
             
-            results_distinguishable_total.aggregate (results_distinguishable)
-            
+            results_distinguishable_total.aggregate (results_distinguishable.get_probabilities ())
+        
+        #print ("Out of distinguishability case")
 
-        print ("Combined results: ")
-        for i in results_distinguishable_total.get_probability_states():
-            print ("key: ", i, " ;", results_distinguishable_total.get_probability (i))
+        #print ("Combined results: ")
+        #for i in results_distinguishable_total.get_probability_states():
+            #print ("key: ", i, " ;", results_distinguishable_total.get_probability (i))
         
         return self.calculate_bunching_probability (results_distinguishable_total, self.number_of_modes)
     
