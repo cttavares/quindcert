@@ -122,15 +122,10 @@ class Variance:
             "[a!=b; a'!=b'; a=a'; a!=b'; b!=a'; b=b']": third_coefficient_case,
             "[a!=b; a'!=b'; a!=a'; a=b'; b=a'; b!=b']": third_coefficient_case,
         }
-
-
-        #print ("What are the coeficients: ", [Fraction (coefficients [i] (n)).limit_denominator (210) for i in coefficients])
-
+        
         # Calculate the second part of the expression with the nested loops and string keys
         result = 0
         count = 0 
-        count_keys = dict()
-
         for a in range(n):
             for b in range(n):
                 if a != b:
@@ -138,36 +133,21 @@ class Variance:
                         for b_prime in range(n):
                             if a_prime != b_prime:
                                 key = f"[a{'!=' if a != b else '='}b; a'{'!=' if a_prime != b_prime else '='}b'; a{'!=' if a != a_prime else '='}a'; a{'!=' if a != b_prime else '='}b'; b{'!=' if b != a_prime else '='}a'; b{'!=' if b != b_prime else '='}b']"
-                                if key in count_keys:
-                                    count_keys [key] += 1
-                                else:
-                                    count_keys [key] = 1
-
+                                
                                 if key in coefficients:
-                                    #s = str (a) + ";" +str (b) + ";" + str (a_prime) + ";" +str (b_prime) + ";" + str (a == a_prime) + ";" + str (a == b_prime) + ";" + str (b == a_prime) + ";" + str (b == b_prime) + "=>" + str (Fraction(coefficients[key](n)).limit_denominator (5040))
-                                    #print (s)
                                     result += coefficients[key](n) * gram_matrix[a][b] * gram_matrix[a_prime][b_prime]
                                     count = count + 1
 
-        #print (count_keys)
-
-        #print ("Count: ", count)
-        #print ("Result: ", result)                   
+                          
         result = result * (1/n**2)
-        #print ("Result after normalization: ", Fraction (result).limit_denominator (250))
-
+        
         # Calculate the first part of the expression
         sum_1 = np.sum ([gram_matrix[a][b] for a in range(n) for b in range(n) if a != b])
         part_1 = 2 * (1 + (1 / (n*(n + 1))) * sum_1 - (2 / (n + 1))) - 1
-        #print ("Part 1: ", part_1)
         result += part_1
         
         abi_jk_fraction = (2*(-2 + 2*n + n**2))/(n*(n+1)*(n+3))    
 
-        #abi_jk_fraction = (2 *(-24 + 14 * n + 86 * n**2 - 56 * n**3 -4 * n**5 + n**7))/(n**2 * (n**2 - 4) * (n**4 - 10*n**2 + 9))
-        #print ("ABI_KJ: ", Fraction (abi_jk_fraction).limit_denominator(315))
-        
-        #print ("Sum 1: ", sum_1)
         jkjk_mat = sum ([gram_matrix [a][b]*abi_jk_fraction for a in range(n) for b in range(n) if a != b])
 
         abi_jk_component = (2 / n**2) * sum_1 * abi_jk_fraction
