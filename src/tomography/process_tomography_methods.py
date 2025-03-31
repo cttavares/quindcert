@@ -155,7 +155,11 @@ class SuperStableMethod (ProcessTomographyMethod):
                         #logging.debug ("------------")
                         C_ghjk = self.calculate_C_ghjk (k, j, h, g)
                         Q_ghjk = self.calculate_Q_ghjk (k, j, h, g)
-                        V_ghjk =  (C_ghjk - Q_ghjk)/C_ghjk
+                        if C_ghjk != 0:
+                            V_ghjk =  (C_ghjk - Q_ghjk)/C_ghjk
+                        else:
+                            V_ghjk = 0
+                        
                         key = "[" + str (k) + "," + str (h) + ";" + str (j) + "," + str (g) + "]"
                         visibilities [key] = V_ghjk
                         #logging.debug ("------------")

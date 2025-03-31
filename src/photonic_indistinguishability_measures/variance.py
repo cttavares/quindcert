@@ -1,7 +1,9 @@
 import logging
 import numpy as np
+import math
 from typing import List, Dict, Optional
 import itertools, functools
+from fractions import Fraction
 
 from base.abstract_circuit import AbstractCircuit
 from base.results import StatesAndProbabilities
@@ -106,21 +108,29 @@ class Variance:
     
     @staticmethod
     def calculate_variance_value_of_the_expected_variance (gram_matrix: List[List[float]], n: int) -> float:
+        first_coefficient_case = lambda n: (2 + 4*n + n**2) / (6*n + 11 * n** 2 + 6*n**3 + n**4)
+        second_coefficient_case = lambda n: ((1 + 4*n + n**2)) / (6*n + 11*n**2 + 6* n**3 + n**4)
+        third_coefficient_case = lambda n: (2 + 5*n + n**2) / (6*n + 11*n**2 + 6*n**3 + n**4)
+        
         # Define the coefficients for different cases
         coefficients = {
-            "[a!=b; a'!=b'; a!=a'; a!=b'; b!=a'; b!=b']": lambda n: (n**4 - n**3 + n**2 + n + 14) / ((n - 1) * n * (n**2 - 4) * (n**2 - 2 * n - 3)),
-            "[a!=b; a'!=b'; a!=a'; a!=b'; b!=a'; b=b']": lambda n: (n**5 + 3 * n**4 - 5 * n**2 + 43 * n - 10) / ((n - 3) * (n - 1) * n**2 * (n + 1) * (n**2 - 4)),
-            "[a!=b; a'!=b'; a!=a'; a!=b'; b=a'; b!=b']": lambda n: (n**4 + n**3 + 2 * n**2 + 3 * n + 25) / ((n - 1) * n * (n**2 - 4) * (n**2 - 2 * n - 3)),
-            "[a!=b; a'!=b'; a!=a'; a=b'; b!=a'; b!=b']": lambda n: (n**6 + 5 * n**5 + 3 * n**4 + n**3 + 50 * n**2 + 81 * n - 12) / ((n - 1) * n**2 * (n + 2) * (n + 3) * (n**2 - 2 * n - 3)),
-            "[a!=b; a'!=b'; a!=a'; a=b'; b=a'; b!=b']": lambda n: (n**4 + 2 * n**3 + 2 * n**2 - n + 30) / (n**2 * (n**2 - 4) * (n**2 - 2 * n - 3)),
-            "[a!=b; a'!=b'; a=a'; a!=b'; b!=a'; b!=b']": lambda n: (n**4 + n**3 + 2 * n**2 + 3 * n + 25) / ((n - 1) * n * (n**2 - 4) * (n**2 - 2 * n - 3)),
-            "[a!=b; a'!=b'; a=a'; a=b'; b!=a'; b=b']": lambda n: (n**4 + 4 * n**3 + 10 * n**2 - 4 * n + 53) / ((n - 1) * n * (n**2 - 4) * (n**2 - 2 * n - 3)),
-            "[a!=b; a'!=b'; a=a'; a!=b'; b=a'; b!=b']": lambda n: (n**4 + 2 * n**3 + 2 * n**2 - n + 30) / (n**2 * (n**2 - 4) * (n**2 - 2 * n - 3)),
-            "[a!=b; a'!=b'; a=a'; a=b'; b=a'; b!=b']": lambda n: (n**5 + 3 * n**4 - 5 * n**2 + 43 * n - 10) / ((n - 3) * (n - 1) * n**2 * (n + 1) * (n**2 - 4)),
+            "[a!=b; a'!=b'; a!=a'; a!=b'; b!=a'; b!=b']": first_coefficient_case,
+            "[a!=b; a'!=b'; a!=a'; a!=b'; b!=a'; b=b']": second_coefficient_case,
+            "[a!=b; a'!=b'; a!=a'; a!=b'; b=a'; b!=b']": second_coefficient_case,
+            "[a!=b; a'!=b'; a!=a'; a=b'; b!=a'; b!=b']": second_coefficient_case,
+            "[a!=b; a'!=b'; a=a'; a!=b'; b!=a'; b!=b']": second_coefficient_case,
+            "[a!=b; a'!=b'; a=a'; a!=b'; b!=a'; b=b']": third_coefficient_case,
+            "[a!=b; a'!=b'; a!=a'; a=b'; b=a'; b!=b']": third_coefficient_case,
         }
+
+
+        #print ("What are the coeficients: ", [Fraction (coefficients [i] (n)).limit_denominator (210) for i in coefficients])
 
         # Calculate the second part of the expression with the nested loops and string keys
         result = 0
+        count = 0 
+        count_keys = dict()
+
         for a in range(n):
             for b in range(n):
                 if a != b:
@@ -128,42 +138,51 @@ class Variance:
                         for b_prime in range(n):
                             if a_prime != b_prime:
                                 key = f"[a{'!=' if a != b else '='}b; a'{'!=' if a_prime != b_prime else '='}b'; a{'!=' if a != a_prime else '='}a'; a{'!=' if a != b_prime else '='}b'; b{'!=' if b != a_prime else '='}a'; b{'!=' if b != b_prime else '='}b']"
+                                if key in count_keys:
+                                    count_keys [key] += 1
+                                else:
+                                    count_keys [key] = 1
+
                                 if key in coefficients:
+                                    #s = str (a) + ";" +str (b) + ";" + str (a_prime) + ";" +str (b_prime) + ";" + str (a == a_prime) + ";" + str (a == b_prime) + ";" + str (b == a_prime) + ";" + str (b == b_prime) + "=>" + str (Fraction(coefficients[key](n)).limit_denominator (5040))
+                                    #print (s)
                                     result += coefficients[key](n) * gram_matrix[a][b] * gram_matrix[a_prime][b_prime]
+                                    count = count + 1
 
-        print ("First big cicle!")
+        #print (count_keys)
 
+        #print ("Count: ", count)
+        #print ("Result: ", result)                   
         result = result * (1/n**2)
+        #print ("Result after normalization: ", Fraction (result).limit_denominator (250))
+
         # Calculate the first part of the expression
         sum_1 = np.sum ([gram_matrix[a][b] for a in range(n) for b in range(n) if a != b])
-        part_1 = 2 * (1 + (1 / (n + 1)) * sum_1 - (2 / (n + 1))) - 1
+        part_1 = 2 * (1 + (1 / (n*(n + 1))) * sum_1 - (2 / (n + 1))) - 1
+        #print ("Part 1: ", part_1)
         result += part_1
-
-
-        # Initialize the sums
-        sum_ab_apbp = 0
         
-        # Loop over all indices to compute the sums
-        for a in range(n):
-            for b in range(n):
-                if a != b:
-                    for a_prime in range(n):
-                        for b_prime in range(n):
-                            if a_prime != b_prime:
-                                sum_ab_apbp += gram_matrix [a][b] * gram_matrix [a_prime][b_prime]
+        abi_jk_fraction = (2*(-2 + 2*n + n**2))/(n*(n+1)*(n+3))    
 
-        print ("Second big cicle!")
+        #abi_jk_fraction = (2 *(-24 + 14 * n + 86 * n**2 - 56 * n**3 -4 * n**5 + n**7))/(n**2 * (n**2 - 4) * (n**4 - 10*n**2 + 9))
+        #print ("ABI_KJ: ", Fraction (abi_jk_fraction).limit_denominator(315))
         
+        #print ("Sum 1: ", sum_1)
+        jkjk_mat = sum ([gram_matrix [a][b]*abi_jk_fraction for a in range(n) for b in range(n) if a != b])
 
-        result -= (2 / n**2) * sum_1 * ((2 * (n**5 - n**4 + 9 * n**3 + 5 * n**2 + 22 * n + 44)) / ((n - 3) * (n - 2) * n * (n + 2) * (n**2 - 1)))
+        abi_jk_component = (2 / n**2) * sum_1 * abi_jk_fraction
 
+        abi_jk_component_new = (2 / n**2) * jkjk_mat
+       
+        result -= abi_jk_component_new
+
+
+        jkjk_component = (4 * (n**2 + 2*n - 1)) / ((n + 1) * (n + 3))
+        
         # Calculate the additional parts
-        result += (1 / n**2) * (4 * (n**5 - n**4 + 10 * n**3 + 12 * n**2 + 13 * n + 61)) / ((n - 3) * (n - 2) * (n - 1) * (n + 1) * (n + 2))
+        result += (1 / n**2) * jkjk_component
         
-        # Calculate the term
-        result += - (1 / (n + 1)**2) * (sum_ab_apbp + 2 * (n - 1) * sum_1 + (n - 1)**2)
-
-        print ("End!")
+        result -= (Variance.calculate_expected_value_of_the_expected_variance (gram_matrix, n))**2
         return result
 
     def __init__(self, device: Device, number_of_modes: int = 2):
@@ -247,7 +266,7 @@ class Variance:
         return variance/number_of_modes
     
     
-    def execute_experiment_variance(self, state: Optional[str] = None, circuit: Optional[AbstractCircuit] = None) -> float:
+    def execute_experiment_variance(self, circuit: Optional[AbstractCircuit] = None, state: Optional[str] = None) -> float:
         """
         Executes an experiment to calculate variance using the specified state and circuit.
 
@@ -263,7 +282,7 @@ class Variance:
 
         if circuit == None:
             circuit = generate_fourier_transform_circuit (self.number_of_modes)
-
+        logging.debug ("Executing Variance experiemnt with " + str (state) + " and " + str (circuit))
         results = self.device.execute_experiment (state, circuit)    
         return self.calculate_expected_variance (results, self.number_of_modes)
     

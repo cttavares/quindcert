@@ -14,10 +14,37 @@ def random_preparation(n):
     """
     return Matrix.random_unitary(n).tolist()
 
+
+
 def fully_indistinguishable_matrix (n):
     matrix_of_ones = [[1 for _ in range(n)] for _ in range(n)]
     return matrix_of_ones
 
+def fully_distinguishable_matrix (n):
+    return constant_matrix_gram_matrix (n, 0)
+
+def random_matrix (n):
+    m = np.zeros ((n,n))
+    for i in range (n): 
+        for j in range (n):
+            if i == j:
+                m [i][j] = 1
+            else:
+                m [i][j] = random.randint(0, 100)*0.01 
+    
+    return m
+    
+def constant_matrix_gram_matrix (n, v):
+    m = np.zeros ((n,n))
+    for i in range (n): 
+        for j in range (n):
+            if i == j:
+                m [i][j] = 1
+            else:
+                m [i][j] = v
+    
+    return m
+    
 def overlap_calculation_for_three_modes(gamma, beta, alpha, phi):
     """
     Calculate overlaps for three modes based on input parameters.
@@ -40,6 +67,21 @@ def overlap_calculation_for_three_modes(gamma, beta, alpha, phi):
     r_AC = np.real(r_AC)
 
     return (r_AB, r_BC, r_AC)
+
+def generate_matrix_from_parameters (gamma, beta, alpha, phi):
+
+    r_AB, r_BC, r_AC = overlap_calculation_for_three_modes(gamma, beta, alpha, phi)
+
+    r_CA = r_AC
+    r_BA = r_AB
+    r_CB = r_BC
+
+    gram_matrix = [[1, r_AB, r_AC],
+                   [r_BA, 1, r_BC],
+                   [r_CA, r_CB, 1]]
+    
+    return gram_matrix
+
 
 def random_GramMatrix_three_modes():
     """
@@ -120,3 +162,6 @@ def generate_fourier_transform_circuit (dimension):
     AbstractCircuit: The generated Fourier transform circuit.
     """
     return AbstractCircuit (dimension, fourier_matrix (dimension))
+
+def generate_random_abstract_circuit (dimension):
+    return AbstractCircuit (dimension, random_preparation (dimension))

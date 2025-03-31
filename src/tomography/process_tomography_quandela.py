@@ -10,7 +10,8 @@ import logging
 from base.abstract_circuit import AbstractCircuit
 
 
-from base.circuit_helpers import generate_fourier_transform_circuit
+from base.circuit_helpers import generate_fourier_transform_circuit, random_preparation, is_unitary
+from quandela.circuit_helpers import generate_random_circuit
 from tomography.process_tomography_methods import ProcessTomographyMethod
 from tomography.tomography_probers import DeviceProcessTomographyProber
 
@@ -50,7 +51,7 @@ class DeviceCharacterizer:
         
         return self.process_tomography_method.recover_state ()
 
-    def generate_some_circuit (self, number_of_modes: int) -> AbstractCircuit:
+    def generate_default_circuit (self, number_of_modes: int) -> AbstractCircuit:
         """
         Generate a Fourier transform circuit for the given number of modes.
 
@@ -60,9 +61,8 @@ class DeviceCharacterizer:
         Returns:
         Any: The generated Fourier transform circuit.
         """
-        #return generate_random_circuit (number_of_modes)
         return generate_fourier_transform_circuit (number_of_modes)
-
+    
     def calculate_distance_between_matrices (self, matrix_1, matrix_2):
         """
         Calculate the distance between two matrices using their density operators.
@@ -90,8 +90,10 @@ class DeviceCharacterizer:
         Tuple[np.ndarray, Any, float]: A tuple containing the original unitary, the reconstructed state, and the distance.
         """
         if self.original is None:
-            self.original = self.generate_some_circuit (self.number_of_modes)
+            logging.debug ("The circuit is none, hence generating one!")
+            self.original = self.generate_default_circuit (self.number_of_modes)
 
+        logging.debug ("Circuit to be used: " + str (self.original))
         self.tomography_device.define_circuit (self.original)
         self.tomography_device.make_experimental_bunch ()
         
@@ -100,6 +102,7 @@ class DeviceCharacterizer:
 
         rebuilt = self.reconstruct_state ()
         logging.debug (rebuilt)
+        
 
         distance = self.calculate_distance_between_matrices (rebuilt, self.original.m)
         logging.debug ("And the distance is ba-dum-pssh:" + str (distance))

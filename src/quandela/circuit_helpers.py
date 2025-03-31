@@ -353,7 +353,6 @@ def generate_random_circuit (number_of_modes: int) -> pcvl.Circuit:
     Returns:
     pcvl.Circuit: The resulting random circuit.
     """
-    
     unitary = pcvl.Matrix.random_unitary(number_of_modes) #creates a random unitary of dimension number_of_modes
     mzi = (pcvl.BS() // (0, pcvl.PS(phi=pcvl.Parameter("φ_a")))
        // pcvl.BS() // (1, pcvl.PS(phi=pcvl.Parameter("φ_b"))))
